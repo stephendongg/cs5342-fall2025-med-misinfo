@@ -4,6 +4,17 @@
 
 To write here. 
 
+### Quick Notes
+- Forked from T&S github repo
+
+
+### Quick Setup
+1. **Clone or fork the repo**  
+   ```bash
+   git clone https://github.com/<your-username>/medical-misinformation-labeler.git
+   cd medical-misinformation-labeler
+
+
 ### Quick Links
 
 * Course website ([Github](https://github.com/tomrist/cs5342-fall2025))
