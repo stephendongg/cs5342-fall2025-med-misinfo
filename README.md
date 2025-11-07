@@ -8,7 +8,7 @@ To write here.
 
 * Course website ([Github](https://github.com/tomrist/cs5342-fall2025))
 * Course schedule ([Google spreadsheet](https://docs.google.com/spreadsheets/d/1mrZBajxnAd-2T20SQ8vEQPFe_OfJxgf3SHRs_5uJePU/edit?usp=sharing))
-* Course syllabus (([Google doc](https://docs.google.com/document/d/1xMR6BffgcEUlzhJFIipahGYKin4TxQrz-sS5iJycT0Q/edit?usp=sharing))
+* Course syllabus ([Google doc](https://docs.google.com/document/d/1xMR6BffgcEUlzhJFIipahGYKin4TxQrz-sS5iJycT0Q/edit?usp=sharing))
 
 ### Team
 
