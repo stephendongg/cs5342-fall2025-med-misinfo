@@ -9,11 +9,10 @@ To write here.
 
 
 ### Quick Setup
-1. **Clone or fork the repo**  
+1. **Clone repo**  
    ```bash
    git clone https://github.com/<your-username>/medical-misinformation-labeler.git
    cd medical-misinformation-labeler
-
 
 ### Quick Links
 
