@@ -14,6 +14,27 @@ To write here.
    git clone https://github.com/<your-username>/medical-misinformation-labeler.git
    cd medical-misinformation-labeler
 
+. **Set up virtual environment**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure environment variables**
+   (To add OpenAI API and eventually Bluesky Account Information)
+   Create a `.env` file in `bluesky-assign3/` directory:
+   ```bash
+   cd bluesky-assign3
+   cp .env-TEMPLATE .env
+   ```
+   
+   Edit `.env` and add your credentials:
+
 ### Quick Links
 
 * Course website ([Github](https://github.com/tomrist/cs5342-fall2025))
