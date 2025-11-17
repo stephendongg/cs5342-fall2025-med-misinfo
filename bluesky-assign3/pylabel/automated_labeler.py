@@ -48,11 +48,10 @@ class AutomatedLabeler:
             ])
 
     def _detect_drug_mention(self, text: str) -> Optional[Dict]:
-        """Use LLM to detect if post discusses a drug.
+        """Use LLM to detect if post discusses any drugs.
         
         Args:
             text: Post content text
-            
         Returns:
             Parsed JSON payload with drug detection results, or None if parsing fails
         """
@@ -60,13 +59,13 @@ class AutomatedLabeler:
         prompt = f"""
         You are a content moderation model.
 
-        Analyze the following post and determine if it discusses or depicts any drug.
+        Analyze the following post and determine if it discusses or depicts any drugs.
 
         Output your response in exactly this JSON format, with no additional text:
         {{
         "discussing_drug": <true or false>,
         "confidence_score": <float between 0 and 1>,
-        "drug_name": "<name of the drug if any, otherwise an empty string>"
+        "drug_names": [<list of drug names as strings, empty if none>]
         }}
 
         Post content:
@@ -88,11 +87,10 @@ class AutomatedLabeler:
             return None
 
     def _determine_labels(self, payload: Dict) -> List[str]:
-        """Determine labels based on drug detection payload and FDA lookup.
+        """Determine labels based on drug detection payload and FDA lookup for all drugs mentioned.
         
         Args:
             payload: Parsed JSON from LLM with drug detection results
-            
         Returns:
             List of labels based on approval status
         """
@@ -103,19 +101,25 @@ class AutomatedLabeler:
         if confidence is None or confidence < DRUG_T:
             return []
 
-        drug_name = (payload.get("drug_name") or "").strip()
-        if not drug_name:
+        drug_names = payload.get("drug_names")
+        if not drug_names or not isinstance(drug_names, list) or not drug_names:
             return []
 
-        approval = check_fda_approval(drug_name)
+        any_unapproved = False
+        for drug_name in drug_names:
+            drug_name = drug_name.strip()
+            if not drug_name:
+                continue
+            approval = check_fda_approval(drug_name)
+            if "error" in approval:
+                print(f"FDA lookup failed for {drug_name}: {approval['error']}")
+                any_unapproved = True
+            elif not approval.get("approved"):
+                any_unapproved = True
 
-        if approval.get("approved"):
-            return ["drug-approved"]
-
-        if "error" in approval:
-            print(f"FDA lookup failed for {drug_name}: {approval['error']}")
-
-        return ["drug-unapproved"]
+        if any_unapproved:
+            return ["drug-unapproved"]
+        return ["drug-approved"]
             
     def moderate_post(self, url: str) -> List[str]:
         """Apply moderation to a post and return appropriate labels.
