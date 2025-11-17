@@ -102,7 +102,7 @@ class AutomatedLabeler:
             return []
 
         drug_names = payload.get("drug_names")
-        if not drug_names or not isinstance(drug_names, list) or not drug_names:
+        if not drug_names or not isinstance(drug_names, list):
             return []
 
         any_unapproved = False
