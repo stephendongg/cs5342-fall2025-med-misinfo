@@ -30,7 +30,10 @@ def extract_claim(text: str, drug_name: str) -> Dict:
 
 Post: {text}
 
-Extract ONLY claims about what disease/condition the drug treats. Ignore dosage, safety, interactions, side effects.
+Extract ONLY explicit claims about what disease/condition the drug treats. 
+- Ignore mentions of conditions in context (e.g., "because he had seizures" is NOT a claim)
+- Ignore dosage, timing, schedule, safety, interactions, side effects
+- Only extract if the post explicitly states or implies what condition the drug is used to treat
 
 Output JSON:
 {{"has_claim": true/false, "claim_text": "claim text or empty string"}}"""
