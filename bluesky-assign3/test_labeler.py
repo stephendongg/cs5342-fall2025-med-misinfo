@@ -38,17 +38,26 @@ def main():
 
     labeler = PolicyProposalLabeler(client, args.labeler_inputs_dir)
 
-    urls = pd.read_csv(args.input_urls)
-    num_correct, total = 0, urls.shape[0]
-    for _index, row in urls.iterrows():
-        url, expected_labels = row["URL"], json.loads(row["Labels"])
-        labels = labeler.moderate_post(url)
+    test_data = pd.read_csv(args.input_urls)
+    num_correct, total = 0, test_data.shape[0]
+    if "Text" in test_data.columns:
+        input_col = "Text"
+    elif "URL" in test_data.columns:
+        input_col = "URL"
+    else:
+        raise ValueError("CSV must contain either 'Text' or 'URL' column.")
+    for _index, row in test_data.iterrows():
+        expected_labels = json.loads(row["Labels"])
+        if input_col == "Text":
+            labels = labeler.moderate_post(text=row["Text"])
+        else:
+            labels = labeler.moderate_post(url=row["URL"])
         if sorted(labels) == sorted(expected_labels):
             num_correct += 1
         else:
-            print(f"For {url}, labeler produced {labels}, expected {expected_labels}")
+            print(f"For {row[input_col]}, labeler produced {labels}, expected {expected_labels}")
         if args.emit_labels and (len(labels) > 0):
-            label_post(client, labeler_client, url, labels)
+            label_post(client, labeler_client, row[input_col], labels)
     print(f"The labeler produced {num_correct} correct labels assignments out of {total}")
     print(f"Overall ratio of correct label assignments {num_correct/total}")
 

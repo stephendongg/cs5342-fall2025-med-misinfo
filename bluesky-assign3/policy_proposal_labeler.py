@@ -189,7 +189,7 @@ class PolicyProposalLabeler:
         
         return ["drug-approved"], approved_drugs
             
-    def moderate_post(self, url: str) -> List[str]:
+    def moderate_post(self, url: Optional[str] = None, text: Optional[str] = None) -> List[str]:
         """Moderate a post and return labels.
         
         Args:
@@ -199,12 +199,18 @@ class PolicyProposalLabeler:
             List of labels: ['drug-approved'], ['drug-approved', 'supported-claim'], 
             ['drug-approved', 'unsupported-claim'], ['drug-unapproved'], or []
         """
-        
+        # Validate that exactly one parameter is provided
+        if not url and not text:
+            raise ValueError("Either 'url' or 'text' must be provided")
+        if url and text:
+            raise ValueError("Only one of 'url' or 'text' should be provided")
+    
         # Step 1: Fetch post content from URL
         start_total = time.time()
         start = time.time()
-        content = post_from_url(self.client, url)
-        text = content.value.text
+        if url:
+            content = post_from_url(self.client, url)
+            text = content.value.text
         elapsed = time.time() - start
         print(f"⏱️  fetch_post: {elapsed:.2f}s")
         
