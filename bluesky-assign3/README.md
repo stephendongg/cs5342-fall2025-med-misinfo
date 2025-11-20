@@ -1,45 +1,109 @@
-# CDA Approved Drugs Labeler 
-## Note:
-- Bookmark this tab for ease of access. 
+# Medical Misinformation Labeler
 
-## Quick Links:
-#### Project Specific
-- [Project Repo](https://drive.google.com/drive/u/0/folders/1jaiOBhk-5XAITQL_i_6qKUUg01tlnjVd)
+## Submission Information
+**Project Name:** MedCheck: Automated Drug Claim Verification Using FDA Labeling  
+**Group Number:** 13  
+**Group Members:** Viha Srinivas, Zhiming Zhang, Samantha Wu, Stephen Dong
+
+---
+
+## Submitted Files
+
+### Core Implementation
+- `policy_proposal_labeler.py` - **Main policy proposal labeler** with drug detection, FDA approval checking, and claim verification
+- `pylabel/label.py` - Utility functions for interacting with Bluesky API and fetching posts
+- `pylabel/claim_checker.py` - Extracts and fact-checks drug-related claims from post text
+- `pylabel/fda_lookup.py` - FDA drug database lookup and approval validation
+- `pylabel/__init__.py` - Package initialization
+- `data.csv` - **[Required for submission]** Test dataset with ~150+ posts for evaluation
+
+### Testing & Data
+- `test_labeler.py` - Testing harness that runs the labeler on CSV input files
+- `test-data/input-drug.csv` - Test cases for drug claim verification
+- `moderation_log.csv` - Output log of labeling decisions with timestamps and details
+
+### Configuration
+- `labeler-inputs/` - Reference data directory containing domain lists and images
+- `README.md` - This documentation file
+
+---
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.8+
+- pip package manager
+
+### Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+Key dependencies: `atproto`, `openai`, `pandas`, `python-dotenv`, `requests`
+
+---
+
+## Running Tests
+
+### Basic Usage
+```bash
+python test_labeler.py labeler-inputs <input-csv-file>
+```
+
+### Test Examples
+
+
+
+**Drug claim verification:**
+```bash
+python test_labeler.py labeler-inputs test-data/input-drug.csv
+```
+NOTE: TODO: change the csv file to data.csv (as specified by the instructions)
+
+
+
+
+
+### Expected Output Format
+```
+The labeler produced (X) correct labels assignments out of (Y)
+Overall ratio of correct label assignments (Z)
+```
+
+Results are also logged to `moderation_log.csv` with detailed information.
+
+---
+
+## Implementation Overview
+
+### Labels Generated
+- `drug-approved` - Post mentions FDA-approved drug(s)
+- `drug-unapproved` - Post mentions unapproved/unrecognized drug(s)
+- `supported-claim` - Claim about approved drug is verified
+- `unsupported-claim` - Claim about approved drug cannot be verified
+
+### Approach
+1. **Drug Detection** - Uses LLM to identify drug mentions in posts
+2. **FDA Verification** - Checks detected drugs against FDA approval database
+3. **Claim Extraction** - Identifies specific claims about drug efficacy/use
+4. **Fact Checking** - Verifies claims against FDA labeling data
+
+### Key Functions
+**`policy_proposal_labeler.py`:**
+- `moderate_post(url)` - Main function that takes a Bluesky post URL and returns list of labels
+- `_detect_drug_mention(text)` - LLM-based drug detection
+- `_determine_approval_labels(payload)` - FDA approval checking
+- `_check_claims(text, approved_drugs)` - Claim verification
+
+---
+
+## Project Links
+- [Project Drive](https://drive.google.com/drive/u/0/folders/1jaiOBhk-5XAITQL_i_6qKUUg01tlnjVd)
 - [Assignment Doc](https://docs.google.com/document/d/1rQrgdzop-6PgfUXK8_p0n2VOfUJENYwo3zitkWgu_rY/edit?tab=t.jl6mduu0sudz)
 - [Policy Proposal](https://docs.google.com/document/d/1f-2VSGjHfFOUZXSHIMBSCVEWm4NRnzjaj4kAB7C3mjw/edit?tab=t.jzvd2wwrer9s)
-- [LucidChart](https://lucid.app/lucidspark/c4ef53c4-81c8-4e82-bd4e-80c468ec0148/edit?viewport_loc=-27%2C-291%2C1719%2C1040%2C0_0&invitationId=inv_5d69265f-11e1-48a0-b335-54c276ce259c)
-#### Technical Documentation 
-- [AT Protocol SDK](https://atproto.blue/en/latest/).
+- [Figma Mockup](https://www.figma.com/board/BnyKzCTUETXypsjbL3RYUs/Med-Misinfo-Labeler?node-id=0-1&t=QKd7iegx3bDecWRm-1)
 
+### Resources
+- [AT Protocol SDK](https://atproto.blue/en/latest/)
 
-## Automated labeler
-The bulk of your Part I implementation will be in `automated_labeler.py`. You are
-welcome to modify this implementation as you wish. However, you **must**
-preserve the signatures of the `__init__` and `moderate_post` functions,
-otherwise the testing/grading script will not work. You may also use the
-functions defined in `label.py`. You can import them like so:
-```
-from .label import post_from_url
-```
-
-For Part II, you will create a file called `policy_proposal_labeler.py` for your
-implementation. You are welcome to create additional files as you see fit.
-
-## Input files
-For Part I, your labeler will have as input lists of T&S words/domains, news
-domains, and a list of dog pictures. These inputs can be found in the
-`labeler-inputs` directory. For testing, we have CSV files where the rows
-consist of URLs paired with the expected labeler output. These can be found
-under the `test-data` directory.
-
-## Testing
-We provide a testing harness in `test-labeler.py`. To test your labeler on the
-input posts for dog pictures, you can run the following command and expect to
-see the following output:
-
-```
-% python test_labeler.py labeler-inputs test-data/input-posts-dogs.csv
-The labeler produced 20 correct labels assignments out of 20
-Overall ratio of correct label assignments 1.0
-```
 
