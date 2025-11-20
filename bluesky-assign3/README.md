@@ -1,7 +1,6 @@
-# Medical Misinformation Labeler
+# MedCheck: Automated Drug Claim Verification Using FDA Labeling  
 
 ## Submission Information
-**Project Name:** MedCheck: Automated Drug Claim Verification Using FDA Labeling  
 **Group Number:** 13  
 **Group Members:** Viha Srinivas, Zhiming Zhang, Samantha Wu, Stephen Dong
 
