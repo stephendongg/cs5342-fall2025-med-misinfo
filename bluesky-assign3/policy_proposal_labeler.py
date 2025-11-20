@@ -1,5 +1,15 @@
 """Policy Proposal Labeler - Drug Misinformation Detection
-Automated detection and verification of drug-related claims using FDA database
+
+This module implements a multi-stage pipeline for detecting and verifying drug-related
+medical misinformation on Bluesky posts:
+
+1. Drug Detection: Uses LLM to identify drug mentions with confidence scoring
+2. FDA Verification: Cross-references drugs against FDA approval database
+3. Claim Extraction: Identifies specific efficacy/use claims about drugs
+4. Fact Checking: Validates claims against FDA labeling data
+
+The labeler uses descriptive, non-categorical labels to inform users without
+making definitive judgments about truth/falsehood.
 """
 
 from typing import List, Dict, Optional
@@ -14,9 +24,10 @@ import os
 import time
 from datetime import datetime
 
-DRUG_CONFIDENCE_THRESHOLD = 0.65
-FACT_CHECK_THRESHOLD = 0.5
-LLM_MODEL = "gpt-5-mini" 
+# Configuration constants
+DRUG_CONFIDENCE_THRESHOLD = 0.65  # Minimum confidence to flag drug mention (reduces false positives)
+FACT_CHECK_THRESHOLD = 0.7  # Minimum confidence to label claim as supported (vs unsupported)
+LLM_MODEL = "gpt-5-mini"  # OpenAI model for drug detection and analysis 
 
 
 class PolicyProposalLabeler:
@@ -113,11 +124,12 @@ class PolicyProposalLabeler:
         claim_details = []
         
         for drug_name in approved_drugs:
-            claim_info = extract_claim(text, drug_name)
+            claim_info = extract_claim(text, drug_name, llm_model=LLM_MODEL)
             if not claim_info.get("has_claim"):
                 continue
             
-            fact_check = fact_check_claim(claim_info["claim_text"], drug_name)
+            fact_check = fact_check_claim(claim_info["claim_text"], drug_name, 
+                                         threshold=FACT_CHECK_THRESHOLD, llm_model=LLM_MODEL)
             
             supported = fact_check.get("supported")
             claim_details.append({

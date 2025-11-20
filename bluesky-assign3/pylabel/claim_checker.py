@@ -7,14 +7,8 @@ import time
 
 from .fda_lookup import get_fda_labeling
 
-try:
-    from .automated_labeler import LLM_MODEL, FACT_CHECK_THRESHOLD
-except ImportError:
-    LLM_MODEL = "gpt-5-mini"
-    FACT_CHECK_THRESHOLD = 0.5
 
-
-def extract_claim(text: str, drug_name: str) -> Dict:
+def extract_claim(text: str, drug_name: str, llm_model: str) -> Dict:
     """Extract indication claim (what condition drug treats).
     
     Args:
@@ -39,7 +33,7 @@ Output JSON:
 {{"has_claim": true/false, "claim_text": "claim text or empty string"}}"""
     
     client = OpenAI()
-    response = client.responses.create(model=LLM_MODEL, input=prompt)
+    response = client.responses.create(model=llm_model, input=prompt)
     
     elapsed = time.time() - start
     print(f"    ⏱️  extract_claim({drug_name}): {elapsed:.2f}s")
@@ -50,19 +44,18 @@ Output JSON:
         return {"has_claim": False, "claim_text": ""}
 
 
-def fact_check_claim(claim_text: str, drug_name: str, threshold: Optional[float] = None) -> Dict:
+def fact_check_claim(claim_text: str, drug_name: str, threshold: float, llm_model: str) -> Dict:
     """Fact-check if claim matches FDA-approved indication.
     
     Args:
         claim_text: The claim to fact-check
         drug_name: Name of the drug
-        threshold: Confidence threshold for support (default: FACT_CHECK_THRESHOLD)
+        threshold: Confidence threshold for determining if claim is supported
+        llm_model: LLM model to use for fact-checking
         
     Returns:
         Dict with keys: "supported" (bool/None), "evidence" (str)
     """
-    if threshold is None:
-        threshold = FACT_CHECK_THRESHOLD
     
     start = time.time()
     
@@ -83,23 +76,20 @@ def fact_check_claim(claim_text: str, drug_name: str, threshold: Optional[float]
 FDA-approved uses for {drug_name}:
 {fda_text}
 
-Does the claim match FDA uses? Output JSON:
-{{"confidence": 0.0-1.0, "contradicted": true/false, "evidence": "brief"}}"""
+How well does the claim match FDA-approved uses? Rate confidence 0.0-1.0.
+Output JSON:
+{{"confidence": 0.0-1.0, "evidence": "brief explanation"}}"""
     
     client = OpenAI()
-    response = client.responses.create(model=LLM_MODEL, input=prompt)
+    response = client.responses.create(model=llm_model, input=prompt)
     
     elapsed = time.time() - start
     
     try:
         result = json.loads(response.output_text.strip())
-        if result.get("contradicted"):
-            print(f"    ⏱️  fact_check_claim({drug_name}): {elapsed:.2f}s")
-            return {"supported": False, "evidence": result.get("evidence", "")}
-        
         confidence = float(result.get("confidence", 0.0))
         supported = confidence >= threshold
-        print(f"    ⏱️  fact_check_claim({drug_name}): {elapsed:.2f}s")
+        print(f"    ⏱️  fact_check_claim({drug_name}): {elapsed:.2f}s (confidence: {confidence:.2f})")
         return {
             "supported": supported,
             "evidence": result.get("evidence", "")
