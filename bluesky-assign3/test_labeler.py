@@ -11,7 +11,8 @@ import os
 import pandas as pd
 from atproto import Client
 from dotenv import load_dotenv
-from pylabel import AutomatedLabeler, label_post, did_from_handle
+from policy_proposal_labeler import PolicyProposalLabeler
+from pylabel import label_post, did_from_handle
 
 load_dotenv(override=True)
 USERNAME = 'tns-labeler.bsky.social'
@@ -35,7 +36,7 @@ def main():
     if args.emit_labels:
         labeler_client = client.with_proxy("atproto_labeler", did)
 
-    labeler = AutomatedLabeler(client, args.labeler_inputs_dir)
+    labeler = PolicyProposalLabeler(client, args.labeler_inputs_dir)
 
     urls = pd.read_csv(args.input_urls)
     num_correct, total = 0, urls.shape[0]

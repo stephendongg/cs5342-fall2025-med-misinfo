@@ -1,11 +1,13 @@
-"""Implementation of automated moderator"""
+"""Policy Proposal Labeler - Drug Misinformation Detection
+Automated detection and verification of drug-related claims using FDA database
+"""
 
 from typing import List, Dict, Optional
 from atproto import Client
 from openai import OpenAI
-from .label import post_from_url
-from .fda_lookup import check_fda_approval
-from .claim_checker import extract_claim, fact_check_claim
+from pylabel.label import post_from_url
+from pylabel.fda_lookup import check_fda_approval
+from pylabel.claim_checker import extract_claim, fact_check_claim
 import json
 import csv
 import os
@@ -17,8 +19,8 @@ FACT_CHECK_THRESHOLD = 0.5
 LLM_MODEL = "gpt-5-mini" 
 
 
-class AutomatedLabeler:
-    """Automated labeler implementation"""
+class PolicyProposalLabeler:
+    """Policy Proposal Labeler for detecting and verifying drug-related medical misinformation"""
 
     def __init__(self, client: Client, input_dir, log_file: Optional[str] = None):
         self.client = client
@@ -222,3 +224,4 @@ class AutomatedLabeler:
         print(f"⏱️  TOTAL TIME: {elapsed_total:.2f}s\n")
             
         return labels
+
