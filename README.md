@@ -54,13 +54,16 @@ med-misinfo-labeler/
 
 ### Testing & Data
 - `test_labeler.py` - Test harness for running labeler on CSV files
-- `data.csv` - Test dataset with ~150+ posts for evaluation
-- `test-data/` - Additional test CSV files with expected labels
+- `data.csv` - **Main evaluation dataset** (~150 posts) combining real Bluesky posts and generated examples
+- `test-data/` - Development and categorized test files:
+  - `input-drug-real.csv` - Real Bluesky posts with drug mentions
+  - `input-drug-generated.csv` - Generated test posts
+  - `by_category/` - Test cases organized by label category (approved, unapproved, supported/unsupported claims, irrelevant)
 - `analysis/` - Analysis notebooks for evaluation and metrics
 
 ### Output Files
-- `output/moderation_log.csv` - Detailed log of labeling decisions (auto-generated)
-- `output/labeled_set.csv` - Labeled dataset output (if generated)
+- `output/moderation_log.csv` - Detailed log of labeling decisions (auto-generated when running tests)
+- `output/labeled_set.csv` - Example copy of moderation_log.csv showing results from running labeler on `data.csv`
 
 ---
 
@@ -106,14 +109,16 @@ Use `analysis/analysis.ipynb` to analyze the results from `output/moderation_log
 ### Labels Generated
 - `drug-approved` - Post mentions FDA-approved drug(s)
 - `drug-unapproved` - Post mentions unapproved/unrecognized drug(s)
-- `supported-claim` - Claim about approved drug is verified against FDA labeling
-- `unsupported-claim` - Claim about approved drug cannot be verified against FDA labeling
+- `supported-claim` - Indication claim (what condition drug treats) is verified against FDA-approved indications
+- `unsupported-claim` - Indication claim cannot be verified against FDA-approved indications
 
 ### Pipeline
 1. **Drug Detection** - Uses LLM to identify drug mentions in posts with confidence scoring
 2. **FDA Verification** - Checks detected drugs against FDA approval database (OpenFDA API)
-3. **Claim Extraction** - Identifies specific claims about drug efficacy/use from post text
-4. **Fact Checking** - Verifies extracted claims against FDA labeling data using LLM
+3. **Claim Extraction** - Identifies indication claims (what condition(s) the drug treats) from post text
+4. **Fact Checking** - Verifies extracted indication claims against FDA-approved indications using LLM
+
+**Note:** Currently, the system only checks indication claims (what conditions drugs treat), not other types of claims such as dosage, side effects, or drug interactions.
 
 ### Key Functions
 
