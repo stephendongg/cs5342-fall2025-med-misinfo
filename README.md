@@ -1,49 +1,139 @@
-# Medical Misinformation Labeler 
+# MedCheck: Automated Drug Claim Verification Using FDA Labeling  
 
-### Project Description
+Automated moderation system for Bluesky that detects drug mentions, verifies FDA approval status, and fact-checks medical claims against FDA labeling data.
 
-To write here. 
+**Group Number:** 13  
+**Group Members:** Viha Srinivas, Zhiming Zhang, Samantha Wu, Stephen Dong
 
-### Quick Notes
-- Forked from T&S github repo
+---
+
+## Quick Setup
+```bash
+git clone https://github.com/<your-username>/medical-misinformation-labeler.git
+cd medical-misinformation-labeler
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env-TEMPLATE .env
+# Edit .env: add OPENAI_API_KEY, USERNAME, PW
+```
 
 
-### Quick Setup
-1. **Clone repo**  
-   ```bash
-   git clone https://github.com/<your-username>/medical-misinformation-labeler.git
-   cd medical-misinformation-labeler
+## Repository Structure
 
-2. **Set up virtual environment**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+```
+med-misinfo-labeler/
+├── analysis/              # Analysis notebooks
+│   └── analysis.ipynb
+├── output/                # Generated files (auto-created)
+│   ├── moderation_log.csv
+│   └── labeled_set.csv
+├── pylabel/               # Core implementation
+│   ├── __init__.py
+│   ├── policy_proposal_labeler.py
+│   ├── claim_checker.py
+│   ├── fda_lookup.py
+│   └── label.py
+├── test-data/             # Test datasets
+│   ├── by_category/
+│   └── *.csv
+├── data.csv               # Required submission file
+├── test_labeler.py        # Main test script
+├── requirements.txt
+├── README.md
+└── .env-TEMPLATE
+```
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Files
 
-4. **Configure environment variables**
-   (To add OpenAI API and eventually Bluesky Account Information)
-   Create a `.env` file in `bluesky-assign3/` directory:
-   ```bash
-   cd bluesky-assign3
-   cp .env-TEMPLATE .env
-   ```
-   
-   Edit `.env` and add your credentials:
+### Core Implementation
+- `pylabel/policy_proposal_labeler.py` - Main `PolicyProposalLabeler` class with moderation pipeline
+- `pylabel/label.py` - Bluesky API utilities (post fetching, label application, DID resolution)
+- `pylabel/claim_checker.py` - Claim extraction and fact-checking against FDA labeling
+- `pylabel/fda_lookup.py` - FDA drug approval and labeling lookup via OpenFDA API
+- `pylabel/__init__.py` - Package initialization
 
-### Quick Links
+### Testing & Data
+- `test_labeler.py` - Test harness for running labeler on CSV files
+- `data.csv` - Test dataset with ~150+ posts for evaluation
+- `test-data/` - Additional test CSV files with expected labels
+- `analysis/` - Analysis notebooks for evaluation and metrics
 
-* Course website ([Github](https://github.com/tomrist/cs5342-fall2025))
-* Course schedule ([Google spreadsheet](https://docs.google.com/spreadsheets/d/1mrZBajxnAd-2T20SQ8vEQPFe_OfJxgf3SHRs_5uJePU/edit?usp=sharing))
-* Course syllabus ([Google doc](https://docs.google.com/document/d/1xMR6BffgcEUlzhJFIipahGYKin4TxQrz-sS5iJycT0Q/edit?usp=sharing))
+### Output Files
+- `output/moderation_log.csv` - Detailed log of labeling decisions (auto-generated)
+- `output/labeled_set.csv` - Labeled dataset output (if generated)
 
-### Team
+---
 
-Viha Srinivas (CM '27) 
-Zhiming Zhang (CM '27) 
-Samantha Wu (DSDA '26)
-Stephen Dong (CM '26)
+## Running Tests
+
+### Basic Usage
+```bash
+python test_labeler.py <input-csv-file> [--emit_labels]
+```
+
+**Note:** By default, labels are NOT emitted to Bluesky. Use `--emit_labels` flag only when you want to actually apply labels to posts on the network.
+
+### Running Evaluation Dataset
+To run the evaluation on the required test dataset:
+```bash
+python test_labeler.py data.csv
+```
+
+### CSV Format
+Files should have `URL` or `Text` column (or both) and a `Labels` column with JSON array format:
+```csv
+URL,Text,Labels
+https://bsky.app/profile/example/post/123,,"[""drug-approved"",""supported-claim""]"
+,Just picked up my metformin prescription.,"[""drug-approved""]"
+```
+
+**Note:** If both columns are present, the script will use whichever has a value (Text is checked first, then URL).
+
+### Expected Output
+The script prints:
+- Number of correct label assignments
+- Overall accuracy ratio
+
+Detailed results (including timestamps, detected drugs, claims, performance metrics) are logged to `output/moderation_log.csv`.
+
+### Evaluation
+Use `analysis/analysis.ipynb` to analyze the results from `output/moderation_log.csv` and calculate detailed metrics (precision, recall, F1-score, error analysis, etc.).
+
+---
+
+## Implementation Overview
+
+### Labels Generated
+- `drug-approved` - Post mentions FDA-approved drug(s)
+- `drug-unapproved` - Post mentions unapproved/unrecognized drug(s)
+- `supported-claim` - Claim about approved drug is verified against FDA labeling
+- `unsupported-claim` - Claim about approved drug cannot be verified against FDA labeling
+
+### Pipeline
+1. **Drug Detection** - Uses LLM to identify drug mentions in posts with confidence scoring
+2. **FDA Verification** - Checks detected drugs against FDA approval database (OpenFDA API)
+3. **Claim Extraction** - Identifies specific claims about drug efficacy/use from post text
+4. **Fact Checking** - Verifies extracted claims against FDA labeling data using LLM
+
+### Key Functions
+
+**Main API (`pylabel/policy_proposal_labeler.py`):**
+- `PolicyProposalLabeler.moderate_post(url=None, text=None)` - Main function that takes a Bluesky post URL or text and returns list of labels
+
+**Supporting Modules:**
+- `pylabel/claim_checker.py` - Claim extraction and fact-checking against FDA labeling
+- `pylabel/fda_lookup.py` - FDA drug approval and labeling lookup via OpenFDA API  
+- `pylabel/label.py` - Bluesky API utilities for fetching posts and applying labels
+
+---
+
+## Project Links
+- [Project Drive](https://drive.google.com/drive/u/0/folders/1jaiOBhk-5XAITQL_i_6qKUUg01tlnjVd)
+- [Assignment Doc](https://docs.google.com/document/d/1rQrgdzop-6PgfUXK8_p0n2VOfUJENYwo3zitkWgu_rY/edit?tab=t.jl6mduu0sudz)
+- [Policy Proposal](https://docs.google.com/document/d/1f-2VSGjHfFOUZXSHIMBSCVEWm4NRnzjaj4kAB7C3mjw/edit?tab=t.jzvd2wwrer9s)
+- [Figma Mockup](https://www.figma.com/board/BnyKzCTUETXypsjbL3RYUs/Med-Misinfo-Labeler?node-id=0-1&t=QKd7iegx3bDecWRm-1)
+
+### Resources
+- [AT Protocol SDK](https://atproto.blue/en/latest/)
+
+

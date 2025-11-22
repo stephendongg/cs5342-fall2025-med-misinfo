@@ -1,5 +1,6 @@
 .venv/  
 .env
-prototyping_notebooks/test.ipynb
-bluesky-lecture.ipynb
-bluesky-assign3/moderation_log.csv
+.DS_Store
+
+*__pycache__
+analysis/testing.ipynb

@@ -1,6 +1,0 @@
-.env
-.pyc
-*dictionary*.txt
-.DS_Store
-.vscode
-*__pycache__

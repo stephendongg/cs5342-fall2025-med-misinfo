@@ -15,9 +15,9 @@ making definitive judgments about truth/falsehood.
 from typing import List, Dict, Optional
 from atproto import Client
 from openai import OpenAI
-from pylabel.label import post_from_url
-from pylabel.fda_lookup import check_fda_approval
-from pylabel.claim_checker import extract_claim, fact_check_claim
+from .label import post_from_url
+from .fda_lookup import check_fda_approval
+from .claim_checker import extract_claim, fact_check_claim
 import json
 import csv
 import os
@@ -35,9 +35,9 @@ LLM_MODEL = "gpt-5-mini"  # OpenAI model for drug detection and analysis
 class PolicyProposalLabeler:
     """Policy Proposal Labeler for detecting and verifying drug-related medical misinformation"""
 
-    def __init__(self, client: Client, input_dir, log_file: Optional[str] = None):
+    def __init__(self, client: Client, log_file: Optional[str] = None):
         self.client = client
-        self.log_file = log_file or "moderation_log.csv"
+        self.log_file = log_file or "output/moderation_log.csv"
         self.openai_client = OpenAI()
         # Network call counters (reset per post)
         self.llm_calls = 0
@@ -47,6 +47,11 @@ class PolicyProposalLabeler:
 
     def _init_log_file(self):
         """Initialize the log CSV file with headers if it doesn't exist."""
+        # Create output directory if it doesn't exist
+        log_dir = os.path.dirname(self.log_file)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
+        
         if not os.path.exists(self.log_file):
             with open(self.log_file, 'w', newline='') as f:
                 writer = csv.writer(f)
