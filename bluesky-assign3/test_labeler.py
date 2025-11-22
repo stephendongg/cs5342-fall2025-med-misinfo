@@ -40,24 +40,37 @@ def main():
 
     test_data = pd.read_csv(args.input_urls)
     num_correct, total = 0, test_data.shape[0]
+    
+    # Determine input column and source
     if "Text" in test_data.columns:
         input_col = "Text"
+        source = "generated"
     elif "URL" in test_data.columns:
         input_col = "URL"
+        source = "real"
     else:
         raise ValueError("CSV must contain either 'Text' or 'URL' column.")
+    
     for _index, row in test_data.iterrows():
         expected_labels = json.loads(row["Labels"])
+        
+        # Call labeler with expected labels and source for logging
         if input_col == "Text":
-            labels = labeler.moderate_post(text=row["Text"])
+            labels = labeler.moderate_post(text=row["Text"], 
+                                          expected_labels=expected_labels, 
+                                          source=source)
         else:
-            labels = labeler.moderate_post(url=row["URL"])
+            labels = labeler.moderate_post(url=row["URL"], 
+                                          expected_labels=expected_labels, 
+                                          source=source)
+        
         if sorted(labels) == sorted(expected_labels):
             num_correct += 1
         else:
             print(f"For {row[input_col]}, labeler produced {labels}, expected {expected_labels}")
         if args.emit_labels and (len(labels) > 0):
             label_post(client, labeler_client, row[input_col], labels)
+    
     print(f"The labeler produced {num_correct} correct labels assignments out of {total}")
     print(f"Overall ratio of correct label assignments {num_correct/total}")
 

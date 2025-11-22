@@ -22,6 +22,7 @@ import json
 import csv
 import os
 import time
+import tracemalloc
 from datetime import datetime
 
 # Configuration constants
@@ -38,6 +39,10 @@ class PolicyProposalLabeler:
         self.client = client
         self.log_file = log_file or "moderation_log.csv"
         self.openai_client = OpenAI()
+        # Network call counters (reset per post)
+        self.llm_calls = 0
+        self.fda_calls = 0
+        self.bluesky_calls = 0
         self._init_log_file()
 
     def _init_log_file(self):
@@ -45,25 +50,52 @@ class PolicyProposalLabeler:
         if not os.path.exists(self.log_file):
             with open(self.log_file, 'w', newline='') as f:
                 writer = csv.writer(f)
-                writer.writerow(['timestamp', 'url', 'llm_response', 'labels', 'claim_details'])
+                writer.writerow(['timestamp', 'source', 'input', 'expected_labels', 'predicted_labels', 
+                               'is_correct', 'drugs_detected', 'has_claim', 'claim_text',
+                               'time_seconds', 'memory_mb', 'llm_calls', 'fda_calls', 'bluesky_calls'])
 
-    def _log_moderation_result(self, url: str, payload: Dict, labels: List[str], claim_details: Optional[List[Dict]] = None):
+    def _log_moderation_result(self, input_value: str, payload: Dict, labels: List[str], 
+                               claim_details: Optional[List[Dict]] = None,
+                               expected_labels: Optional[List[str]] = None,
+                               source: Optional[str] = None,
+                               time_seconds: float = 0,
+                               memory_mb: float = 0):
         """Log moderation result to CSV file.
         
         Args:
-            url: URL of the post
+            input_value: URL or text of the post
             payload: LLM response payload
-            labels: Resulting labels
+            labels: Resulting labels (predicted)
             claim_details: Optional list of claim details dictionaries
+            expected_labels: Optional ground truth labels for evaluation
+            source: Optional source identifier (e.g., 'real', 'generated')
+            time_seconds: Time taken to process post
+            memory_mb: Memory used in MB
         """
+        is_correct = sorted(labels) == sorted(expected_labels) if expected_labels else None
+        
+        # Extract info for easier analysis
+        drugs_detected = json.dumps(payload.get('drug_names', []))
+        has_claim = len(claim_details) > 0 if claim_details else False
+        claim_text = claim_details[0].get('claim_text', '') if claim_details else ''
+        
         with open(self.log_file, 'a', newline='') as f:
             writer = csv.writer(f)
             writer.writerow([
                 datetime.now().isoformat(),
-                url,
-                json.dumps(payload),
+                source or '',
+                input_value,
+                json.dumps(expected_labels) if expected_labels else '',
                 json.dumps(labels),
-                json.dumps(claim_details) if claim_details else ""
+                is_correct if is_correct is not None else '',
+                drugs_detected,
+                has_claim,
+                claim_text,
+                round(time_seconds, 2),
+                round(memory_mb, 2),
+                self.llm_calls,
+                self.fda_calls,
+                self.bluesky_calls
             ])
 
     def _detect_drug_mention(self, text: str) -> Optional[Dict]:
@@ -93,6 +125,7 @@ class PolicyProposalLabeler:
         {text}
         """.strip()
 
+        self.llm_calls += 1  # Track LLM call
         response = self.openai_client.responses.create(
             model=LLM_MODEL,
             input=prompt,
@@ -125,6 +158,7 @@ class PolicyProposalLabeler:
         has_any_claim = False
         
         for drug_name in approved_drugs:
+            self.llm_calls += 1  # Track claim extraction LLM call
             claim_info = extract_claim(text, drug_name, llm_model=LLM_MODEL)
             
             # Skip if no claim detected or confidence too low
@@ -135,6 +169,8 @@ class PolicyProposalLabeler:
             
             has_any_claim = True
             
+            self.fda_calls += 1  # Track FDA labeling lookup
+            self.llm_calls += 1  # Track fact-check LLM call
             fact_check = fact_check_claim(claim_info["claim_text"], drug_name, 
                                          threshold=FACT_CHECK_THRESHOLD, llm_model=LLM_MODEL)
             
@@ -188,6 +224,7 @@ class PolicyProposalLabeler:
             drug_name = drug_name.strip()
             if not drug_name:
                 continue
+            self.fda_calls += 1  # Track FDA approval check
             approval = check_fda_approval(drug_name)
             if "error" in approval or not approval.get("approved"):
                 has_unapproved = True
@@ -202,11 +239,15 @@ class PolicyProposalLabeler:
         
         return ["drug-approved"], approved_drugs
             
-    def moderate_post(self, url: Optional[str] = None, text: Optional[str] = None) -> List[str]:
+    def moderate_post(self, url: Optional[str] = None, text: Optional[str] = None,
+                     expected_labels: Optional[List[str]] = None, source: Optional[str] = None) -> List[str]:
         """Moderate a post and return labels.
         
         Args:
             url: URL of the Bluesky post to moderate
+            text: Text content to moderate (alternative to URL)
+            expected_labels: Ground truth labels for evaluation
+            source: Source identifier ('real', 'generated', etc.)
             
         Returns:
             List of labels: ['drug-approved'], ['drug-approved', 'supported-claim'], 
@@ -218,10 +259,18 @@ class PolicyProposalLabeler:
         if url and text:
             raise ValueError("Only one of 'url' or 'text' should be provided")
     
+        # Reset counters and start performance tracking
+        self.llm_calls = 0
+        self.fda_calls = 0
+        self.bluesky_calls = 0
+        
+        start_time = time.time()
+        tracemalloc.start()
+        
         # Step 1: Fetch post content from URL
-        start_total = time.time()
         start = time.time()
         if url:
+            self.bluesky_calls += 1
             content = post_from_url(self.client, url)
             text = content.value.text
         elapsed = time.time() - start
@@ -235,24 +284,38 @@ class PolicyProposalLabeler:
         # Step 3: Check confidence threshold and FDA approval status
         approval_labels, approved_drugs = self._determine_approval_labels(payload)
         
-        # If no drugs or unapproved, return early
+        # Determine input value for logging
+        input_value = url if url else text
+        
+        # If no drugs or unapproved, calculate metrics and return early
         if not approval_labels or "drug-unapproved" in approval_labels:
-            self._log_moderation_result(url, payload, approval_labels)
-            elapsed_total = time.time() - start_total
-            print(f"⏱️  TOTAL TIME: {elapsed_total:.2f}s\n")
+            elapsed_time = time.time() - start_time
+            _, peak_memory = tracemalloc.get_traced_memory()
+            memory_mb = peak_memory / 1024 / 1024
+            tracemalloc.stop()
+            
+            self._log_moderation_result(input_value, payload, approval_labels, 
+                                       expected_labels=expected_labels, source=source,
+                                       time_seconds=elapsed_time, memory_mb=memory_mb)
+            print(f"⏱️  TOTAL TIME: {elapsed_time:.2f}s\n")
             return approval_labels
         
         # Step 4: All approved - check for claims and fact-check them
         labels = approval_labels.copy()
-
         claim_labels, claim_details = self._check_claims(text, approved_drugs)
         labels.extend(claim_labels)
         
-        # Step 5: Log results and return labels
-        self._log_moderation_result(url, payload, labels, claim_details)
+        # Step 5: Calculate performance metrics and log results
+        elapsed_time = time.time() - start_time
+        _, peak_memory = tracemalloc.get_traced_memory()
+        memory_mb = peak_memory / 1024 / 1024
+        tracemalloc.stop()
         
-        elapsed_total = time.time() - start_total
-        print(f"⏱️  TOTAL TIME: {elapsed_total:.2f}s\n")
+        self._log_moderation_result(input_value, payload, labels, claim_details,
+                                    expected_labels=expected_labels, source=source,
+                                    time_seconds=elapsed_time, memory_mb=memory_mb)
+        
+        print(f"⏱️  TOTAL TIME: {elapsed_time:.2f}s\n")
             
         return labels
 
